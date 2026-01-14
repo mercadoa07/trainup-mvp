@@ -6,8 +6,8 @@ import { Dumbbell, Users, Calendar, CheckCircle, Plus, X, LogOut, User, Trending
 // SUPABASE CONFIG
 // ============================================
 // REEMPLAZA ESTOS VALORES CON LOS DE TU PROYECTO
-const supabaseUrl = 'YOUR_SUPABASE_URL'; // ej: https://abcdefgh.supabase.co
-const supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
+const supabaseUrl = 'https://zfezauhgjkgnytkqmxux.supabase.co'; // ej: https://abcdefgh.supabase.co
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmZXphdWhnamtnbnl0a3FteHV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzNTE4MjUsImV4cCI6MjA4MzkyNzgyNX0.ZbDAwS15Fuw22-pj5fo7yAi0OkaueJ76-LcvbvFq0mU';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // ============================================
