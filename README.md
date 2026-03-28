@@ -1,245 +1,154 @@
-# 🏋️ TrainUp MVP
+# TrainUp v2 — MVP
 
-Plataforma que conecta **entrenadores** con **alumnos** para gestionar planes de entrenamiento y trackear progreso.
+Plataforma que conecta entrenadores personales con sus alumnos para gestionar planes de entrenamiento y trackear progreso en tiempo real.
 
 ---
 
-## 🚀 Quick Start (10 minutos)
+## Setup rapido (10 minutos)
 
-### 1️⃣ Setup Supabase
+### 1. Crear proyecto en Supabase
 
 1. Ve a [supabase.com](https://supabase.com) y crea una cuenta
-2. Crea un nuevo proyecto (elige región más cercana a Colombia)
-3. Espera 2 minutos mientras se crea el proyecto
-4. Ve a **SQL Editor** (icono de base de datos en sidebar)
-5. Crea una nueva query y pega TODO el contenido de `supabase-schema.sql`
-6. Click en **RUN** (o F5)
-7. Si todo salió bien, verás "Success. No rows returned"
+2. Crea un nuevo proyecto
+3. Ve a **SQL Editor** y ejecuta TODO el contenido de `supabase-schema.sql`
 
-### 2️⃣ Obtener credenciales de Supabase
+### 2. Obtener credenciales
 
-1. En tu proyecto de Supabase, ve a **Settings** (engrane abajo a la izquierda)
-2. Click en **API**
-3. Copia estos 2 valores:
-   - **Project URL** (ej: `https://abcdefgh.supabase.co`)
-   - **anon public** key (es una key larga que empieza con `eyJ...`)
+En tu proyecto Supabase: **Settings** → **API**
+- Copia el **Project URL**
+- Copia el **anon public key**
 
-### 3️⃣ Configurar el proyecto
-
-1. Abre el archivo `src/App.jsx`
-2. Busca estas líneas al principio (línea ~10):
-```javascript
-const supabaseUrl = 'YOUR_SUPABASE_URL';
-const supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
-```
-3. Reemplaza con tus valores:
-```javascript
-const supabaseUrl = 'https://abcdefgh.supabase.co';
-const supabaseAnonKey = 'eyJhbGc...tu-key-completa';
-```
-
-### 4️⃣ Instalar y correr
+### 3. Configurar variables de entorno
 
 ```bash
-# Instalar dependencias
-npm install
+cp .env.example .env
+```
 
-# Correr en desarrollo
+Edita `.env` con tus valores:
+```
+VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGc...tu-key
+```
+
+### 4. Instalar y correr
+
+```bash
+npm install
 npm run dev
 ```
 
-La app se abrirá en `http://localhost:3000` 🎉
+La app corre en `http://localhost:5173`
 
 ---
 
-## 📱 Cómo usar el MVP
+## Configuracion de Supabase Auth
 
-### Como ENTRENADOR:
+En tu proyecto Supabase ve a **Authentication** → **URL Configuration** y agrega:
 
-1. **Sign up** como "Entrenador"
-2. Confirma tu email (revisa spam si no llega)
-3. **Crear Plan**:
-   - Nombre: "Hipertrofia 8 semanas"
-   - Agrega días (ej: Día 1: Pierna, Día 2: Push, etc)
-   - Por cada día, agrega ejercicios con series/reps
-4. **Invitar alumno**:
-   - Ve a "Alumnos" → "Invitar Alumno"
-   - Copia el link y envíaselo
-5. **Asignar plan**:
-   - Una vez tu alumno se registre, aparecerá en tu lista
-   - Click en "Asignar Plan" y elige el plan
+- Site URL: `http://localhost:5173` (dev) o tu URL de produccion
+- Redirect URLs: la misma URL
 
-### Como ALUMNO:
+---
 
-1. Recibe el link de invitación de tu entrenador
-2. **Sign up** como "Alumno"
+## Flujo de uso
+
+### Entrenador:
+1. Sign up con role "Entrenador"
+2. Confirma email
+3. Ve a "Planes" → "Crear plan" (wizard de 3 pasos)
+4. Ve a "Alumnos" → "Invitar" → copia el link
+5. Comparte el link por WhatsApp
+6. Cuando el alumno se registra, asignale el plan desde su perfil
+
+### Alumno:
+1. Entra al link de invitacion del trainer
+2. Sign up — queda vinculado automaticamente
 3. Confirma email
-4. Verás tu plan de hoy
-5. Completa ejercicios marcando series/reps/peso
-6. Click en "Completar Entrenamiento"
+4. Ve su entrenamiento del dia y hace click en "Comenzar"
+5. Registra reps y peso por cada serie con botones +/-
+6. Al terminar, guarda el entrenamiento
 
 ---
 
-## 🛠️ Stack Técnico
+## Stack tecnico
 
 ```
-Frontend: React 18 + Vite + Tailwind CSS
-Backend: Supabase (PostgreSQL + Auth + Realtime)
-Icons: Lucide React
-Deploy: Vercel (recomendado)
+Frontend: React 18 + Vite + Tailwind CSS + React Router v6
+Backend:  Supabase (PostgreSQL + Auth + RLS)
+Graficos: Recharts
+Icons:    Lucide React
+Deploy:   Vercel
 ```
 
 ---
 
-## 🚢 Deploy a Producción (Vercel)
-
-### Opción A: Desde GitHub (recomendado)
-
-1. Sube tu código a un repo de GitHub
-2. Ve a [vercel.com](https://vercel.com)
-3. "New Project" → Import tu repo
-4. Vercel detectará Vite automáticamente
-5. Agrega variables de entorno:
-   - `VITE_SUPABASE_URL` = tu URL de Supabase
-   - `VITE_SUPABASE_ANON_KEY` = tu anon key
-6. Deploy!
-
-**IMPORTANTE**: Si usas variables de entorno, actualiza `App.jsx`:
-```javascript
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-```
-
-### Opción B: Deploy directo con Vercel CLI
+## Deploy en Vercel
 
 ```bash
-npm install -g vercel
+# Con Vercel CLI
 vercel
+
+# Variables de entorno en Vercel Dashboard:
+# VITE_SUPABASE_URL
+# VITE_SUPABASE_ANON_KEY
+```
+
+O importa el repo en [vercel.com](https://vercel.com) y agrega las variables de entorno.
+
+---
+
+## Estructura del proyecto
+
+```
+src/
+├── lib/supabase.js              # Cliente Supabase
+├── context/AuthContext.jsx      # Auth state + profile
+├── components/
+│   ├── Layout.jsx               # Header + nav bottom
+│   ├── ProtectedRoute.jsx       # Guard por role
+│   └── ui/index.jsx             # Button, Card, Modal, etc
+└── pages/
+    ├── Login.jsx
+    ├── SignUp.jsx
+    ├── trainer/
+    │   ├── Dashboard.jsx        # Resumen de alumnos
+    │   ├── Students.jsx         # Lista + link de invitacion
+    │   ├── StudentDetail.jsx    # Perfil + historial + asignar plan
+    │   ├── CreateWorkout.jsx    # Wizard crear plan
+    │   ├── Workouts.jsx         # Lista de planes
+    │   └── WorkoutDetail.jsx    # Ver plan detallado
+    └── student/
+        ├── Dashboard.jsx        # Entrenamiento del dia
+        ├── WorkoutLog.jsx       # Logging touch-friendly
+        ├── History.jsx          # Historial de sesiones
+        └── Progress.jsx         # Graficas de progreso
 ```
 
 ---
 
-## 📊 Estructura de la Base de Datos
+## Features implementadas
 
-```
-profiles (usuarios base)
-├─ trainer_profiles (info de entrenadores)
-└─ student_profiles (info de alumnos)
-
-workouts (planes de entrenamiento)
-└─ workout_days (días del plan)
-   └─ exercises (ejercicios por día)
-
-assignments (plan asignado a alumno)
-
-workout_logs (registro de entrenamiento)
-└─ exercise_logs (registro por ejercicio)
-```
+- Auth completo (signup/login/logout) con roles trainer/student
+- Link de invitacion con invite_code que vincula alumno automaticamente
+- Wizard para crear planes (info → dias → ejercicios)
+- Dashboard del trainer con estado de cada alumno (entren hoy, esta semana)
+- Asignacion de planes a alumnos con fecha de inicio
+- Logica de dia actual ciclico (Dia 1 → Dia 2 → Dia 3 → Dia 1...)
+- Pantalla de logging touch-friendly con botones +/- para peso y reps
+- Guardado de workout_logs y exercise_logs en Supabase
+- Historial expandible del alumno
+- Graficas de progreso de peso por ejercicio (Recharts)
+- RLS policies — cada usuario solo ve sus datos
+- Responsive mobile-first
 
 ---
 
-## 🎯 Features del MVP v0.1
+## Troubleshooting
 
-### ✅ Implementado:
-- [x] Auth (Login/Signup)
-- [x] Dashboard Entrenador
-- [x] Crear planes con días y ejercicios
-- [x] Ver lista de alumnos
-- [x] Invitar alumnos (link)
-- [x] Asignar plan a alumno
-- [x] Dashboard Alumno
-- [x] Ver plan de hoy
-- [x] Loggear ejercicios (series/reps/peso)
-- [x] Completar entrenamiento
+**"Error al conectar con Supabase"** — Verifica las variables de entorno en `.env`
 
-### 🔜 Próximas features (v0.2):
-- [ ] Ver historial de entrenamientos
-- [ ] Gráficas de progreso
-- [ ] Chat entrenador-alumno
-- [ ] Editar planes existentes
-- [ ] Templates de planes
-- [ ] Videos por ejercicio
+**"No puedo hacer signup"** — Revisa Supabase → Authentication → Settings, puede que necesites deshabilitar email confirmation para testing
 
----
+**"RLS policy error"** — Asegurate de ejecutar el schema SQL completo
 
-## 🐛 Troubleshooting
-
-### "Error connecting to Supabase"
-- Verifica que las credenciales estén correctas
-- Revisa que el schema se haya ejecutado sin errores
-
-### "No puedo hacer signup"
-- Ve a Supabase → Authentication → Settings
-- Confirma que "Enable email confirmations" esté ON
-- Revisa tu spam para el email de confirmación
-
-### "RLS policy error"
-- Las políticas RLS están configuradas en el schema
-- Si ves errores de permisos, verifica que el schema se ejecutó completo
-
-### "Cannot find module @supabase/supabase-js"
-- Corre `npm install` de nuevo
-- Borra `node_modules` y `package-lock.json`, luego `npm install`
-
----
-
-## 📈 Roadmap
-
-### Phase 1 - MVP (2-3 semanas) ✅
-- Sistema base funcional
-
-### Phase 2 - Core Features (1 mes)
-- Historial y progreso
-- Chat
-- Notificaciones
-- Mobile responsive mejorado
-
-### Phase 3 - Growth Features (2 meses)
-- IA para generar planes
-- IA para análisis de progreso
-- Templates marketplace
-- Integración calendario
-
-### Phase 4 - Scale (3-6 meses)
-- App móvil nativa (React Native)
-- Sistema de pagos
-- Wearables integration
-- Comunidad/social
-
----
-
-## 💡 Tips para probar rápido
-
-1. Crea 2 cuentas en ventanas diferentes (Incognito):
-   - Ventana 1: Entrenador
-   - Ventana 2: Alumno
-
-2. Flujo rápido:
-   - Entrenador: Crear plan simple (1 día, 3 ejercicios)
-   - Entrenador: Copiar link de invitación
-   - Alumno: Registrarse con ese link
-   - Entrenador: Asignar plan
-   - Alumno: Ver y completar entrenamiento
-
----
-
-## 📞 Soporte
-
-Si algo no funciona:
-1. Revisa la consola del navegador (F12 → Console)
-2. Revisa logs de Supabase (Dashboard → Logs)
-3. Crea un issue en el repo
-
----
-
-## 📄 Licencia
-
-MIT - Úsalo como quieras
-
----
-
-## 🙌 Créditos
-
-Built by Apelis
-Stack: React + Supabase + Tailwind
-Icons: Lucide React
+**El alumno no queda vinculado al trainer** — Verifica que el invite_code en la URL sea el UUID correcto del trainer
