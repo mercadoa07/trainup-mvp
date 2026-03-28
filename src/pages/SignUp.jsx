@@ -9,6 +9,7 @@ export default function SignUp() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const inviteCode = searchParams.get('invite')
+  const refCode = searchParams.get('ref')
 
   const [form, setForm] = useState({
     fullName: '',
@@ -40,7 +41,8 @@ export default function SignUp() {
       password: form.password,
       fullName: form.fullName,
       role: form.role,
-      inviteCode: inviteCode || null
+      inviteCode: inviteCode || null,
+      refCode: refCode || null
     })
     setLoading(false)
 
@@ -162,7 +164,13 @@ export default function SignUp() {
 
             {inviteCode && (
               <div className="p-3 bg-blue-50 rounded-xl text-xs text-blue-600">
-                Te registrás como alumno y quedarás vinculado a tu entrenador automáticamente.
+                Te registras como alumno y quedas vinculado a tu entrenador automaticamente.
+              </div>
+            )}
+
+            {refCode && !inviteCode && (
+              <div className="p-3 bg-purple-50 rounded-xl text-xs text-purple-600">
+                Fuiste invitado por alguien de la comunidad TrainUp.
               </div>
             )}
 

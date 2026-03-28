@@ -38,9 +38,10 @@ export function AuthProvider({ children }) {
     setLoading(false)
   }
 
-  async function signUp({ email, password, fullName, role, inviteCode }) {
+  async function signUp({ email, password, fullName, role, inviteCode, refCode }) {
     const metadata = { full_name: fullName, role }
     if (inviteCode) metadata.invite_code = inviteCode
+    if (refCode) metadata.ref_code = refCode
 
     const { data, error } = await supabase.auth.signUp({
       email,
