@@ -130,6 +130,16 @@ export default function StudentDashboard() {
     )
   }
 
+  // Upcoming days (next 3 in cycle, excluding today)
+  const allDays = [...(data?.workout?.workout_days || [])].sort((a, b) => a.day_number - b.day_number)
+  const totalDays = allDays.length
+  const upcomingDays = totalDays > 1
+    ? Array.from({ length: Math.min(3, totalDays - 1) }, (_, i) => {
+        const nextNum = ((data.assignment.current_day + i) % totalDays) + 1
+        return allDays.find(d => d.day_number === nextNum)
+      }).filter(Boolean)
+    : []
+
   // Show today's workout
   return (
     <div className="flex flex-col gap-6">
@@ -175,6 +185,29 @@ export default function StudentDashboard() {
           </Button>
         </div>
       </Card>
+
+      {/* Upcoming sessions */}
+      {upcomingDays.length > 0 && (
+        <div>
+          <h3 className="font-bold text-gray-900 mb-3 text-sm">Proximas sesiones</h3>
+          <div className="flex flex-col gap-2">
+            {upcomingDays.map((d, i) => (
+              <Card key={d.id} className="p-3 flex items-center gap-3">
+                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs font-bold text-gray-500">{i + 2}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900">{d.name}</p>
+                  {d.focus && <p className="text-xs text-gray-400 truncate">{d.focus}</p>}
+                </div>
+                <span className="text-xs text-gray-400 flex-shrink-0">
+                  {d.exercises?.length || 0} ejercicios
+                </span>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
