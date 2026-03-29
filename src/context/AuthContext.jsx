@@ -38,8 +38,9 @@ export function AuthProvider({ children }) {
     setLoading(false)
   }
 
-  async function signUp({ email, password, fullName, role, inviteCode, refCode }) {
+  async function signUp({ email, password, fullName, phone, role, inviteCode, refCode }) {
     const metadata = { full_name: fullName, role }
+    if (phone) metadata.phone = phone
     if (inviteCode) metadata.invite_code = inviteCode
     if (refCode) metadata.ref_code = refCode
 

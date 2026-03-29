@@ -16,6 +16,7 @@ export default function SignUp() {
   const [form, setForm] = useState({
     fullName: '',
     email: '',
+    phone: '',
     password: '',
     confirmPassword: '',
     role: inviteCode ? 'student' : 'trainer'
@@ -51,6 +52,7 @@ export default function SignUp() {
       email: form.email,
       password: form.password,
       fullName: form.fullName,
+      phone: form.phone || null,
       role: form.role,
       inviteCode: inviteCode || null,
       refCode: refCode || null
@@ -141,6 +143,14 @@ export default function SignUp() {
               onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))}
               required
               autoComplete="new-password"
+            />
+            <Input
+              label="WhatsApp (opcional)"
+              type="tel"
+              placeholder="+54 9 11 1234-5678"
+              value={form.phone}
+              onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+              autoComplete="tel"
             />
 
             {!inviteCode && (
