@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { Card, Badge, Button, LoadingSpinner, Modal, Select } from '../../components/ui'
-import { ArrowLeft, Dumbbell, ChevronDown, ChevronUp, Clock, BarChart2, Pencil, Share2, Check, MessageCircle } from 'lucide-react'
+import { ArrowLeft, Dumbbell, ChevronDown, ChevronUp, Clock, BarChart2, Pencil, Share2, Check, MessageCircle, Copy } from 'lucide-react'
 
 function formatWaPhone(phone) {
   if (!phone) return null
@@ -71,11 +71,71 @@ export default function WorkoutDetail() {
   const [expandedDay, setExpandedDay] = useState(0)
   const [copied, setCopied] = useState(false)
 
+  const [duplicating, setDuplicating] = useState(false)
+
   // WhatsApp modal state
   const [showWa, setShowWa] = useState(false)
   const [students, setStudents] = useState([])
   const [waStudentId, setWaStudentId] = useState('')
   const [waType, setWaType] = useState('plan') // 'plan' or day id
+
+  async function duplicateWorkout() {
+    if (duplicating) return
+    setDuplicating(true)
+    try {
+      // 1. Clone workout row
+      const { data: newWorkout, error: wErr } = await supabase
+        .from('workouts')
+        .insert({
+          trainer_id: profile.id,
+          name: `Copia de ${workout.name}`,
+          description: workout.description,
+          goal: workout.goal,
+          difficulty: workout.difficulty,
+          duration_weeks: workout.duration_weeks,
+          days_per_week: workout.days_per_week,
+        })
+        .select()
+        .single()
+      if (wErr) throw wErr
+
+      // 2. Clone days + exercises
+      for (const day of days) {
+        const { data: newDay, error: dErr } = await supabase
+          .from('workout_days')
+          .insert({
+            workout_id: newWorkout.id,
+            day_number: day.day_number,
+            name: day.name,
+            focus: day.focus,
+            scheduled_date: null, // don't copy dates
+          })
+          .select()
+          .single()
+        if (dErr) throw dErr
+
+        if (day.exercises?.length) {
+          await supabase.from('exercises').insert(
+            day.exercises.map(ex => ({
+              workout_day_id: newDay.id,
+              name: ex.name,
+              sets: ex.sets,
+              reps: ex.reps,
+              rest_seconds: ex.rest_seconds,
+              weight_prescribed: ex.weight_prescribed,
+              notes: ex.notes,
+              order_index: ex.order_index,
+            }))
+          )
+        }
+      }
+
+      navigate(`/trainer/workouts/${newWorkout.id}/edit`)
+    } catch (err) {
+      console.error(err)
+    }
+    setDuplicating(false)
+  }
 
   function copyJoinLink() {
     if (!workout?.join_code) return
@@ -167,6 +227,9 @@ export default function WorkoutDetail() {
         </button>
         <button onClick={copyJoinLink} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 flex-shrink-0" title="Copiar link de inscripción">
           {copied ? <Check className="w-4 h-4 text-green-600" /> : <Share2 className="w-4 h-4 text-gray-600" />}
+        </button>
+        <button onClick={duplicateWorkout} disabled={duplicating} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 flex-shrink-0 disabled:opacity-40" title="Duplicar plan">
+          <Copy className="w-4 h-4 text-gray-600" />
         </button>
         <button onClick={() => navigate(`/trainer/workouts/${workoutId}/edit`)} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 flex-shrink-0" title="Editar plan">
           <Pencil className="w-4 h-4 text-gray-600" />

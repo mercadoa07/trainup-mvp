@@ -3,8 +3,10 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Layout } from './components/Layout'
+import { ScrollToTop } from './components/ScrollToTop'
 import { LoadingSpinner } from './components/ui'
 
+const Landing = lazy(() => import('./pages/Landing'))
 const Login = lazy(() => import('./pages/Login'))
 const SignUp = lazy(() => import('./pages/SignUp'))
 const Join = lazy(() => import('./pages/Join'))
@@ -51,6 +53,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <Suspense fallback={<PageLoader />}>
+          <ScrollToTop />
           <Routes>
             {/* Public */}
             <Route path="/login" element={<Login />} />
@@ -76,9 +79,9 @@ export default function App() {
             <Route path="/student/history" element={<StudentLayout><History /></StudentLayout>} />
             <Route path="/student/progress" element={<StudentLayout><Progress /></StudentLayout>} />
 
-            {/* Default redirect */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route path="*" element={<Navigate to="/login" replace />} />
+            {/* Default */}
+            <Route path="/" element={<Landing />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
       </AuthProvider>
