@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { Card, Badge, Button, LoadingSpinner, EmptyState } from '../../components/ui'
-import { Zap, CheckCircle2, Clock, BarChart2, ChevronRight, Play } from 'lucide-react'
+import { Zap, CheckCircle2, Clock, BarChart2, ChevronRight, Play, Calendar } from 'lucide-react'
 
 export default function StudentDashboard() {
   const { profile } = useAuth()
@@ -51,15 +51,31 @@ export default function StudentDashboard() {
     // Get today's day
     const days = assignment.workouts?.workout_days || []
     const sortedDays = [...days].sort((a, b) => a.day_number - b.day_number)
-    const totalDays = sortedDays.length
-    const currentDayNumber = ((assignment.current_day - 1) % totalDays) + 1
-    const todayDay = sortedDays.find(d => d.day_number === currentDayNumber) || sortedDays[0]
+
+    const hasScheduledDates = sortedDays.some(d => d.scheduled_date)
+
+    let todayDay = null
+    let upcomingScheduled = []
+
+    if (hasScheduledDates) {
+      // Date-based mode
+      todayDay = sortedDays.find(d => d.scheduled_date === today) || null
+      upcomingScheduled = sortedDays
+        .filter(d => d.scheduled_date && d.scheduled_date > today)
+        .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date))
+        .slice(0, 3)
+    } else {
+      // Cyclic mode
+      const totalDays = sortedDays.length
+      const currentDayNumber = ((assignment.current_day - 1) % totalDays) + 1
+      todayDay = sortedDays.find(d => d.day_number === currentDayNumber) || sortedDays[0]
+    }
 
     if (todayDay) {
       todayDay.exercises = (todayDay.exercises || []).sort((a, b) => a.order_index - b.order_index)
     }
 
-    setData({ assignment, todayDay, workout: assignment.workouts })
+    setData({ assignment, todayDay, workout: assignment.workouts, hasScheduledDates, upcomingScheduled })
     setTodayLog(existingLog || null)
     setLoading(false)
   }
@@ -83,7 +99,7 @@ export default function StudentDashboard() {
     )
   }
 
-  const { assignment, todayDay, workout } = data
+  const { assignment, todayDay, workout, hasScheduledDates, upcomingScheduled } = data
 
   // Already trained today
   if (todayLog?.completed) {
@@ -130,15 +146,83 @@ export default function StudentDashboard() {
     )
   }
 
-  // Upcoming days (next 3 in cycle, excluding today)
+  // Upcoming days — cyclic mode (not date-based)
   const allDays = [...(data?.workout?.workout_days || [])].sort((a, b) => a.day_number - b.day_number)
   const totalDays = allDays.length
-  const upcomingDays = totalDays > 1
+  const upcomingDays = !hasScheduledDates && totalDays > 1
     ? Array.from({ length: Math.min(3, totalDays - 1) }, (_, i) => {
         const nextNum = ((data.assignment.current_day + i) % totalDays) + 1
         return allDays.find(d => d.day_number === nextNum)
       }).filter(Boolean)
     : []
+
+  // Date-based mode: no workout today
+  if (hasScheduledDates && !todayDay) {
+    const nextSession = upcomingScheduled?.[0] || null
+    return (
+      <div className="flex flex-col gap-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Hola, {profile?.full_name?.split(' ')[0]} 👋</h1>
+          <p className="text-sm text-gray-500 mt-1">Tu entrenamiento de hoy</p>
+        </div>
+
+        <Card className="p-6 text-center bg-gradient-to-br from-slate-50 to-blue-50 border-blue-100">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <Calendar className="w-8 h-8 text-blue-500" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-1">No tenés entrenamiento hoy</h2>
+          <p className="text-sm text-gray-500">Descansá y recuperate para la proxima sesion.</p>
+        </Card>
+
+        {nextSession && (
+          <div>
+            <h3 className="font-bold text-gray-900 mb-3 text-sm">Proxima sesion</h3>
+            <Card className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Calendar className="w-5 h-5 text-blue-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900">{nextSession.name}</p>
+                  <p className="text-xs text-blue-600 font-medium">
+                    {new Date(nextSession.scheduled_date + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                  </p>
+                  {nextSession.focus && <p className="text-xs text-gray-400 truncate">{nextSession.focus}</p>}
+                </div>
+                <span className="text-xs text-gray-400 flex-shrink-0">
+                  {nextSession.exercises?.length || 0} ejercicios
+                </span>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {upcomingScheduled.length > 1 && (
+          <div>
+            <h3 className="font-bold text-gray-900 mb-3 text-sm">Sesiones programadas</h3>
+            <div className="flex flex-col gap-2">
+              {upcomingScheduled.slice(1).map((d) => (
+                <Card key={d.id} className="p-3 flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Calendar className="w-4 h-4 text-gray-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">{d.name}</p>
+                    <p className="text-xs text-blue-500">
+                      {new Date(d.scheduled_date + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                    </p>
+                  </div>
+                  <span className="text-xs text-gray-400 flex-shrink-0">
+                    {d.exercises?.length || 0} ejercicios
+                  </span>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   // Show today's workout
   return (
@@ -158,9 +242,16 @@ export default function StudentDashboard() {
             <span className="flex items-center gap-1">
               <BarChart2 className="w-4 h-4" /> {todayDay?.exercises?.length} ejercicios
             </span>
-            <span className="flex items-center gap-1">
-              <Clock className="w-4 h-4" /> Dia {assignment.current_day} del ciclo
-            </span>
+            {hasScheduledDates && todayDay?.scheduled_date ? (
+              <span className="flex items-center gap-1">
+                <Calendar className="w-4 h-4" />
+                {new Date(todayDay.scheduled_date + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })}
+              </span>
+            ) : (
+              <span className="flex items-center gap-1">
+                <Clock className="w-4 h-4" /> Dia {assignment.current_day} del ciclo
+              </span>
+            )}
           </div>
         </div>
         <div className="p-5">
@@ -186,8 +277,34 @@ export default function StudentDashboard() {
         </div>
       </Card>
 
-      {/* Upcoming sessions */}
-      {upcomingDays.length > 0 && (
+      {/* Upcoming sessions — date mode */}
+      {hasScheduledDates && upcomingScheduled.length > 0 && (
+        <div>
+          <h3 className="font-bold text-gray-900 mb-3 text-sm">Proximas sesiones</h3>
+          <div className="flex flex-col gap-2">
+            {upcomingScheduled.map((d) => (
+              <Card key={d.id} className="p-3 flex items-center gap-3">
+                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Calendar className="w-4 h-4 text-gray-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900">{d.name}</p>
+                  <p className="text-xs text-blue-500">
+                    {new Date(d.scheduled_date + 'T12:00:00').toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                  </p>
+                  {d.focus && <p className="text-xs text-gray-400 truncate">{d.focus}</p>}
+                </div>
+                <span className="text-xs text-gray-400 flex-shrink-0">
+                  {d.exercises?.length || 0} ejercicios
+                </span>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Upcoming sessions — cyclic mode */}
+      {!hasScheduledDates && upcomingDays.length > 0 && (
         <div>
           <h3 className="font-bold text-gray-900 mb-3 text-sm">Proximas sesiones</h3>
           <div className="flex flex-col gap-2">

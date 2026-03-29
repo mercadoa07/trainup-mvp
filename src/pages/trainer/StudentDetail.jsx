@@ -16,7 +16,6 @@ export default function StudentDetail() {
   const [loading, setLoading] = useState(true)
   const [showAssign, setShowAssign] = useState(false)
   const [selectedWorkout, setSelectedWorkout] = useState('')
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0])
   const [assigning, setAssigning] = useState(false)
   const [expandedLog, setExpandedLog] = useState(null)
 
@@ -45,12 +44,17 @@ export default function StudentDetail() {
       workout_id: selectedWorkout,
       student_id: studentId,
       trainer_id: profile.id,
-      start_date: startDate,
+      start_date: new Date().toISOString().split('T')[0],
       status: 'active',
       current_day: 1
     })
     setAssigning(false)
     if (!error) { setShowAssign(false); setSelectedWorkout(''); loadAll() }
+  }
+
+  function handleCreateAndAssign() {
+    setShowAssign(false)
+    navigate(`/trainer/workouts/new?assignTo=${studentId}`)
   }
 
   function formatDate(dateStr) {
@@ -160,24 +164,27 @@ export default function StudentDetail() {
         )}
       </div>
 
-      <Modal isOpen={showAssign} onClose={() => setShowAssign(false)} title="Asignar plan"
-        footer={<Button className="w-full" onClick={assignWorkout} disabled={!selectedWorkout || assigning}>{assigning ? 'Asignando...' : 'Asignar plan'}</Button>}
+      <Modal isOpen={showAssign} onClose={() => setShowAssign(false)} title="Asignar entrenamiento"
+        footer={
+          <div className="flex flex-col gap-2 w-full">
+            <Button className="w-full" onClick={assignWorkout} disabled={!selectedWorkout || assigning}>{assigning ? 'Asignando...' : 'Asignar plan'}</Button>
+            <button
+              onClick={handleCreateAndAssign}
+              className="w-full py-3 px-4 rounded-xl border-2 border-blue-200 text-blue-600 text-sm font-medium hover:bg-blue-50 transition-colors"
+            >
+              Crear y asignar nuevo
+            </button>
+          </div>
+        }
       >
         <div className="flex flex-col gap-4">
           {workouts.length === 0 ? (
             <p className="text-sm text-gray-500 text-center py-4">No tenes planes creados. Crea uno primero.</p>
           ) : (
-            <>
-              <Select label="Plan" value={selectedWorkout} onChange={e => setSelectedWorkout(e.target.value)}>
-                <option value="">Seleccionar plan...</option>
-                {workouts.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-              </Select>
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-gray-700">Fecha de inicio</label>
-                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white" />
-              </div>
-            </>
+            <Select label="Plan" value={selectedWorkout} onChange={e => setSelectedWorkout(e.target.value)}>
+              <option value="">Seleccionar plan...</option>
+              {workouts.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+            </Select>
           )}
         </div>
       </Modal>

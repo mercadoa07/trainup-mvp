@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 import { Button, Input } from '../components/ui'
 import { Dumbbell, AlertCircle, CheckCircle } from 'lucide-react'
 
@@ -21,6 +22,15 @@ export default function SignUp() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [referrer, setReferrer] = useState(null)
+
+  useEffect(() => {
+    if (refCode) {
+      supabase.rpc('get_referrer_info', { ref_code: refCode }).then(({ data }) => {
+        if (data) setReferrer(data)
+      })
+    }
+  }, [refCode])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -170,7 +180,10 @@ export default function SignUp() {
 
             {refCode && !inviteCode && (
               <div className="p-3 bg-purple-50 rounded-xl text-xs text-purple-600">
-                Fuiste invitado por alguien de la comunidad TrainUp.
+                {referrer
+                  ? <>Fuiste invitado por <strong>{referrer.full_name}</strong> ({referrer.role === 'trainer' ? 'Entrenador' : 'Alumno'}) a unirte a TrainUp.</>
+                  : 'Fuiste invitado por alguien de la comunidad TrainUp.'
+                }
               </div>
             )}
 

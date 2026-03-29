@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { Card, Button, Input, Select, Textarea } from '../../components/ui'
+import { Card, Button, Input, Select, Textarea, LoadingSpinner } from '../../components/ui'
 import { ArrowLeft, Plus, Trash2, ChevronRight, ChevronLeft, Check, ChevronDown, ChevronUp, Dumbbell, CalendarPlus } from 'lucide-react'
 
 const STEP_LABELS = ['Informacion', 'Sesiones']
@@ -24,25 +24,20 @@ function StepIndicator({ current }) {
   )
 }
 
-function emptyDay() {
-  return { name: '', focus: '', notes: '', scheduled_date: '', exercises: [emptyExercise()] }
-}
 function emptyExercise() {
   return { name: '', sets: 3, reps: '10', rest_seconds: 60, weight_prescribed: '', notes: '' }
 }
 
-export default function CreateWorkout() {
+export default function EditWorkout() {
+  const { workoutId } = useParams()
   const { profile } = useAuth()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const assignTo = searchParams.get('assignTo') || ''
   const [step, setStep] = useState(0)
+  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [expandedDay, setExpandedDay] = useState(0)
-  const [assignToStudent, setAssignToStudent] = useState(assignTo)
-  const [students, setStudents] = useState([])
-  const [assignToBannerName, setAssignToBannerName] = useState('')
+  const [removedExerciseIds, setRemovedExerciseIds] = useState([])
 
   const [info, setInfo] = useState({
     name: '',
@@ -56,32 +51,66 @@ export default function CreateWorkout() {
   const [days, setDays] = useState([])
 
   useEffect(() => {
-    if (!profile?.id) return
-    supabase
-      .from('student_profiles')
-      .select('id, profiles!student_profiles_id_fkey(full_name)')
+    if (workoutId) loadWorkout()
+  }, [workoutId])
+
+  async function loadWorkout() {
+    const { data: w } = await supabase
+      .from('workouts')
+      .select('*')
+      .eq('id', workoutId)
       .eq('trainer_id', profile.id)
-      .then(({ data }) => {
-        if (data) setStudents(data)
+      .single()
+
+    const { data: d } = await supabase
+      .from('workout_days')
+      .select('*, exercises(*)')
+      .eq('workout_id', workoutId)
+      .order('day_number')
+
+    if (w) {
+      setInfo({
+        name: w.name || '',
+        description: w.description || '',
+        goal: w.goal || '',
+        duration_weeks: w.duration_weeks || 4,
+        days_per_week: w.days_per_week || 3,
+        difficulty: w.difficulty || 'intermediate'
       })
-    if (assignTo) {
-      supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', assignTo)
-        .single()
-        .then(({ data }) => {
-          if (data) setAssignToBannerName(data.full_name)
-        })
     }
-  }, [profile])
+
+    if (d) {
+      setDays(d.map(day => ({
+        id: day.id,
+        name: day.name || '',
+        focus: day.focus || '',
+        notes: day.notes || '',
+        scheduled_date: day.scheduled_date || '',
+        exercises: (day.exercises || [])
+          .sort((a, b) => a.order_index - b.order_index)
+          .map(ex => ({
+            id: ex.id,
+            name: ex.name || '',
+            sets: ex.sets || 3,
+            reps: ex.reps || '10',
+            rest_seconds: ex.rest_seconds || 60,
+            weight_prescribed: ex.weight_prescribed || '',
+            notes: ex.notes || ''
+          }))
+      })))
+    }
+
+    setLoading(false)
+  }
 
   // Derived: how many complete weeks are loaded
   const weeksLoaded = days.length > 0 ? Math.ceil(days.length / info.days_per_week) : 0
   const totalWeeks = info.duration_weeks
 
   function addWeek() {
-    const newDays = Array.from({ length: info.days_per_week }, emptyDay)
+    const newDays = Array.from({ length: info.days_per_week }, () => ({
+      name: '', focus: '', notes: '', scheduled_date: '', exercises: [emptyExercise()]
+    }))
     const firstNewIdx = days.length
     setDays(d => [...d, ...newDays])
     setExpandedDay(firstNewIdx)
@@ -104,6 +133,10 @@ export default function CreateWorkout() {
   }
 
   function removeExercise(dayIdx, exIdx) {
+    const ex = days[dayIdx].exercises[exIdx]
+    if (ex.id) {
+      setRemovedExerciseIds(ids => [...ids, ex.id])
+    }
     setDays(d => d.map((dd, i) => i === dayIdx
       ? { ...dd, exercises: dd.exercises.filter((_, j) => j !== exIdx) }
       : dd
@@ -132,11 +165,6 @@ export default function CreateWorkout() {
 
   function nextStep() {
     if (!validateStep()) return
-    // Auto-generate first week's sessions when entering step 1
-    if (step === 0 && days.length === 0) {
-      setDays(Array.from({ length: info.days_per_week }, emptyDay))
-      setExpandedDay(0)
-    }
     setStep(s => s + 1)
   }
 
@@ -146,62 +174,95 @@ export default function CreateWorkout() {
     setError('')
 
     try {
-      const { data: workout, error: wErr } = await supabase
+      // Update workout info
+      const { error: wErr } = await supabase
         .from('workouts')
-        .insert({ ...info, trainer_id: profile.id })
-        .select()
-        .single()
+        .update({
+          name: info.name,
+          description: info.description || null,
+          goal: info.goal || null,
+          duration_weeks: info.duration_weeks,
+          days_per_week: info.days_per_week,
+          difficulty: info.difficulty
+        })
+        .eq('id', workoutId)
 
       if (wErr) throw wErr
 
-      const dayInserts = days.map((d, i) => ({
-        workout_id: workout.id,
-        day_number: i + 1,
-        name: d.name || `Sesion ${i + 1}`,
-        focus: d.focus || null,
-        notes: d.notes || null,
-        scheduled_date: d.scheduled_date || null
-      }))
+      // Process days
+      for (let i = 0; i < days.length; i++) {
+        const day = days[i]
+        let dayId = day.id
 
-      const { data: insertedDays, error: dErr } = await supabase
-        .from('workout_days')
-        .insert(dayInserts)
-        .select()
+        if (dayId) {
+          // Update existing day
+          await supabase
+            .from('workout_days')
+            .update({
+              name: day.name || `Sesion ${i + 1}`,
+              focus: day.focus || null,
+              notes: day.notes || null,
+              scheduled_date: day.scheduled_date || null
+            })
+            .eq('id', dayId)
+        } else {
+          // Insert new day
+          const { data: newDay, error: dErr } = await supabase
+            .from('workout_days')
+            .insert({
+              workout_id: workoutId,
+              day_number: i + 1,
+              name: day.name || `Sesion ${i + 1}`,
+              focus: day.focus || null,
+              notes: day.notes || null,
+              scheduled_date: day.scheduled_date || null
+            })
+            .select()
+            .single()
+          if (dErr) throw dErr
+          dayId = newDay.id
+        }
 
-      if (dErr) throw dErr
-
-      const exInserts = []
-      insertedDays.forEach((day, dayIdx) => {
-        days[dayIdx].exercises.forEach((ex, exIdx) => {
-          exInserts.push({
-            workout_day_id: day.id,
-            order_index: exIdx + 1,
-            name: ex.name,
-            sets: Number(ex.sets),
-            reps: ex.reps,
-            rest_seconds: Number(ex.rest_seconds),
-            weight_prescribed: ex.weight_prescribed || null,
-            notes: ex.notes || null
-          })
-        })
-      })
-
-      const { error: eErr } = await supabase.from('exercises').insert(exInserts)
-      if (eErr) throw eErr
-
-      if (assignToStudent) {
-        await supabase.from('assignments').insert({
-          workout_id: workout.id,
-          student_id: assignToStudent,
-          trainer_id: profile.id,
-          start_date: new Date().toISOString().split('T')[0],
-          status: 'active',
-          current_day: 1
-        })
-        navigate(`/trainer/students/${assignToStudent}`)
-      } else {
-        navigate('/trainer/workouts')
+        // Process exercises for this day
+        for (let j = 0; j < day.exercises.length; j++) {
+          const ex = day.exercises[j]
+          if (ex.id) {
+            // Update existing exercise
+            await supabase
+              .from('exercises')
+              .update({
+                name: ex.name,
+                sets: Number(ex.sets),
+                reps: ex.reps,
+                rest_seconds: Number(ex.rest_seconds),
+                weight_prescribed: ex.weight_prescribed || null,
+                notes: ex.notes || null
+              })
+              .eq('id', ex.id)
+          } else {
+            // Insert new exercise
+            await supabase
+              .from('exercises')
+              .insert({
+                workout_day_id: dayId,
+                order_index: j + 1,
+                name: ex.name,
+                sets: Number(ex.sets),
+                reps: ex.reps,
+                rest_seconds: Number(ex.rest_seconds),
+                weight_prescribed: ex.weight_prescribed || null,
+                notes: ex.notes || null
+              })
+          }
+        }
       }
+
+      // Delete removed exercises (silently)
+      if (removedExerciseIds.length > 0) {
+        await supabase.from('exercises').delete().in('id', removedExerciseIds)
+      }
+
+      navigate(`/trainer/workouts/${workoutId}`)
     } catch (err) {
       setError('Error al guardar: ' + (err.message || 'intenta de nuevo'))
     }
@@ -219,22 +280,21 @@ export default function CreateWorkout() {
     return groups
   }
 
+  if (loading) return <div className="flex justify-center py-20"><LoadingSpinner size="lg" /></div>
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-3">
-        <button onClick={() => step > 0 ? setStep(s => s - 1) : navigate(-1)} className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100">
+        <button
+          onClick={() => step > 0 ? setStep(s => s - 1) : navigate(`/trainer/workouts/${workoutId}`)}
+          className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100"
+        >
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </button>
-        <h1 className="text-xl font-bold text-gray-900">Crear plan</h1>
+        <h1 className="text-xl font-bold text-gray-900">Editar plan</h1>
       </div>
 
       <StepIndicator current={step} />
-
-      {assignTo && (
-        <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-sm text-blue-700">
-          Este plan se asignará automáticamente{assignToBannerName ? ` a ${assignToBannerName}` : ' al alumno'} al guardarlo.
-        </div>
-      )}
 
       {error && (
         <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600">{error}</div>
@@ -267,18 +327,6 @@ export default function CreateWorkout() {
               <option value="intermediate">Intermedio</option>
               <option value="advanced">Avanzado</option>
             </Select>
-            {students.length > 0 && (
-              <Select
-                label="Asignar a alumno (opcional)"
-                value={assignToStudent}
-                onChange={e => setAssignToStudent(e.target.value)}
-              >
-                <option value="">Sin asignar</option>
-                {students.map(s => (
-                  <option key={s.id} value={s.id}>{s.profiles?.full_name || s.id}</option>
-                ))}
-              </Select>
-            )}
           </div>
         </Card>
       )}
@@ -322,7 +370,8 @@ export default function CreateWorkout() {
                           <span className="text-xs font-bold text-blue-700">{globalIdx + 1}</span>
                         </div>
                         <span className="text-sm font-semibold text-gray-700">Sesion {globalIdx + 1}</span>
-                        {days.length > info.days_per_week && (
+                        {/* Only allow deleting days that don't have an id (new days) */}
+                        {!day.id && days.length > info.days_per_week && (
                           <button onClick={() => removeDay(globalIdx)} className="w-8 h-8 flex items-center justify-center rounded-lg text-red-400 hover:bg-red-50 ml-auto">
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -467,7 +516,7 @@ export default function CreateWorkout() {
           </Button>
         ) : (
           <Button onClick={handleSave} disabled={saving} className="flex-1">
-            {saving ? 'Guardando...' : 'Guardar plan'}
+            {saving ? 'Guardando...' : 'Guardar cambios'}
           </Button>
         )}
       </div>

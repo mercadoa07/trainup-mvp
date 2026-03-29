@@ -12,6 +12,7 @@ import StudentDetail from './pages/trainer/StudentDetail'
 import CreateWorkout from './pages/trainer/CreateWorkout'
 import Workouts from './pages/trainer/Workouts'
 import WorkoutDetail from './pages/trainer/WorkoutDetail'
+import EditWorkout from './pages/trainer/EditWorkout'
 
 import StudentDashboard from './pages/student/Dashboard'
 import WorkoutLog from './pages/student/WorkoutLog'
@@ -50,6 +51,7 @@ export default function App() {
           <Route path="/trainer/workouts" element={<TrainerLayout><Workouts /></TrainerLayout>} />
           <Route path="/trainer/workouts/new" element={<TrainerLayout><CreateWorkout /></TrainerLayout>} />
           <Route path="/trainer/workouts/:workoutId" element={<TrainerLayout><WorkoutDetail /></TrainerLayout>} />
+          <Route path="/trainer/workouts/:workoutId/edit" element={<TrainerLayout><EditWorkout /></TrainerLayout>} />
 
           {/* Student routes */}
           <Route path="/student" element={<StudentLayout><StudentDashboard /></StudentLayout>} />
