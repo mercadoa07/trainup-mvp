@@ -24,7 +24,7 @@ export default function TrainerDashboard() {
       .select(`
         id,
         subscription_status,
-        profiles!inner(id, full_name, email)
+        profiles!student_profiles_id_fkey(id, full_name, email)
       `)
       .eq('trainer_id', profile.id)
 
