@@ -26,7 +26,7 @@ export default function StudentDetail() {
 
   async function loadAll() {
     const [studentRes, assignRes, logRes, workoutRes] = await Promise.all([
-      supabase.from('student_profiles').select('*, profiles!inner(full_name, email)').eq('id', studentId).eq('trainer_id', profile.id).single(),
+      supabase.from('student_profiles').select('*, profiles!student_profiles_id_fkey(full_name, email)').eq('id', studentId).eq('trainer_id', profile.id).single(),
       supabase.from('assignments').select('*, workouts(name, days_per_week, duration_weeks)').eq('student_id', studentId).eq('trainer_id', profile.id).order('created_at', { ascending: false }),
       supabase.from('workout_logs').select('*, workout_days(name, day_number), exercise_logs(*, exercises(name))').eq('student_id', studentId).order('logged_date', { ascending: false }).limit(20),
       supabase.from('workouts').select('id, name').eq('trainer_id', profile.id).order('created_at', { ascending: false })

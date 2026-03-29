@@ -35,7 +35,7 @@ export default function Students() {
   async function loadStudents() {
     const { data, error } = await supabase
       .from('student_profiles')
-      .select('id, subscription_status, created_at, profiles!inner(full_name, email)')
+      .select('id, subscription_status, created_at, profiles!student_profiles_id_fkey(full_name, email)')
       .eq('trainer_id', profile.id)
       .order('created_at', { ascending: false })
 
