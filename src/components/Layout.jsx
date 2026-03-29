@@ -55,7 +55,6 @@ export function Layout({ children }) {
   const panelRef = useRef(null)
 
   const unreadCount = notifications.filter(n => !n.read).length
-  const now = new Date().toISOString()
 
   useEffect(() => {
     if (!profile?.id) return
@@ -72,7 +71,7 @@ export function Layout({ children }) {
       }, (payload) => {
         const n = payload.new
         // Only show if created_at <= now (workout reminders are pre-scheduled)
-        if (n.created_at <= now) {
+        if (n.created_at <= new Date().toISOString()) {
           setNotifications(prev => [n, ...prev])
         }
       })
@@ -93,6 +92,7 @@ export function Layout({ children }) {
   }, [showPanel])
 
   async function loadNotifications() {
+    const now = new Date().toISOString()
     const { data } = await supabase
       .from('notifications')
       .select('*')

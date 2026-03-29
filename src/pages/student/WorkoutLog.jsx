@@ -40,11 +40,19 @@ function NumberStepper({ value, onChange, min = 0, max = 999, step = 1, label, s
   )
 }
 
+function getSavedWorkout() {
+  try { return JSON.parse(sessionStorage.getItem('activeWorkout') || 'null') } catch { return null }
+}
+
 export default function WorkoutLog() {
   const { profile } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const { assignment, todayDay } = location.state || {}
+
+  const locationState = location.state || {}
+  const savedWorkout = getSavedWorkout()
+  const assignment = locationState.assignment || savedWorkout?.assignment
+  const todayDay = locationState.todayDay || savedWorkout?.todayDay
 
   const startTimeRef = useRef(Date.now())
   const [currentExIdx, setCurrentExIdx] = useState(0)
@@ -54,6 +62,7 @@ export default function WorkoutLog() {
   const [workoutNotes, setWorkoutNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   const exercises = todayDay?.exercises || []
 
@@ -62,6 +71,8 @@ export default function WorkoutLog() {
       navigate('/student', { replace: true })
       return
     }
+    // Persist to sessionStorage so a reload recovers the session
+    sessionStorage.setItem('activeWorkout', JSON.stringify({ assignment, todayDay }))
     // Initialize logs for each exercise
     setExerciseLogs(exercises.map(ex => ({
       exercise_id: ex.id,
@@ -158,24 +169,27 @@ export default function WorkoutLog() {
       const { error: eErr } = await supabase.from('exercise_logs').insert(exLogInserts)
       if (eErr) throw eErr
 
-      // Advance current_day
-      const { data: aData } = await supabase
-        .from('assignments')
-        .select('current_day, workouts(days_per_week)')
-        .eq('id', assignment.id)
-        .single()
+      // Only advance current_day for cyclic plans (not date-based)
+      if (!todayDay?.scheduled_date) {
+        const { data: aData } = await supabase
+          .from('assignments')
+          .select('current_day, workouts(days_per_week)')
+          .eq('id', assignment.id)
+          .single()
 
-      if (aData) {
-        const totalDays = aData.workouts?.days_per_week || 1
-        const nextDay = (aData.current_day % totalDays) + 1
-        await supabase.from('assignments').update({ current_day: nextDay }).eq('id', assignment.id)
+        if (aData) {
+          const totalDays = aData.workouts?.days_per_week || 1
+          const nextDay = (aData.current_day % totalDays) + 1
+          await supabase.from('assignments').update({ current_day: nextDay }).eq('id', assignment.id)
+        }
       }
 
+      sessionStorage.removeItem('activeWorkout')
       setSaved(true)
       setTimeout(() => navigate('/student', { replace: true }), 2000)
     } catch (err) {
       console.error(err)
-      alert('Error al guardar: ' + (err.message || 'intenta de nuevo'))
+      setSaveError('Error al guardar. Intentá de nuevo.')
     }
     setSaving(false)
   }
@@ -334,6 +348,11 @@ export default function WorkoutLog() {
         }
       >
         <div className="flex flex-col gap-5">
+          {saveError && (
+            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600">
+              <X className="w-4 h-4 flex-shrink-0" />{saveError}
+            </div>
+          )}
           <div>
             <p className="text-sm font-medium text-gray-700 mb-3">Como te senti? (opcional)</p>
             <div className="flex gap-2 justify-center">

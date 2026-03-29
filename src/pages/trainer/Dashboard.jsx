@@ -21,55 +21,45 @@ export default function TrainerDashboard() {
 
     const { data: studentProfiles, error } = await supabase
       .from('student_profiles')
-      .select(`
-        id,
-        subscription_status,
-        profiles!student_profiles_id_fkey(id, full_name, email)
-      `)
+      .select('id, subscription_status, profiles!student_profiles_id_fkey(id, full_name, email)')
       .eq('trainer_id', profile.id)
 
-    if (error || !studentProfiles) { setLoading(false); return }
+    if (error || !studentProfiles?.length) { setStudents([]); setLoading(false); return }
 
-    const enriched = await Promise.all(
-      studentProfiles.map(async (sp) => {
-        const studentId = sp.id
+    const studentIds = studentProfiles.map(sp => sp.id)
 
-        // Get active assignment
-        const { data: assignments } = await supabase
-          .from('assignments')
-          .select('id, workout_id, workouts(name)')
-          .eq('student_id', studentId)
-          .eq('trainer_id', profile.id)
-          .eq('status', 'active')
-          .limit(1)
+    const [{ data: assignments }, { data: weekLogs }] = await Promise.all([
+      supabase.from('assignments')
+        .select('id, student_id, workout_id, workouts(name)')
+        .in('student_id', studentIds)
+        .eq('trainer_id', profile.id)
+        .eq('status', 'active'),
+      supabase.from('workout_logs')
+        .select('student_id, logged_date, completed')
+        .in('student_id', studentIds)
+        .gte('logged_date', weekAgo)
+        .lte('logged_date', today)
+    ])
 
-        const assignment = assignments?.[0]
+    const enriched = studentProfiles.map(sp => {
+      const studentId = sp.id
+      const assignment = assignments?.find(a => a.student_id === studentId)
+      const logs = weekLogs?.filter(l => l.student_id === studentId) || []
+      const completedThisWeek = logs.filter(l => l.completed).length
+      const trainedToday = logs.some(l => l.logged_date === today && l.completed)
+      const lastSession = logs.find(l => l.completed)?.logged_date
 
-        // Get logs this week
-        const { data: weekLogs } = await supabase
-          .from('workout_logs')
-          .select('logged_date, completed')
-          .eq('student_id', studentId)
-          .gte('logged_date', weekAgo)
-          .lte('logged_date', today)
-          .order('logged_date', { ascending: false })
-
-        const completedThisWeek = weekLogs?.filter(l => l.completed).length || 0
-        const trainedToday = weekLogs?.some(l => l.logged_date === today && l.completed) || false
-        const lastSession = weekLogs?.find(l => l.completed)?.logged_date
-
-        return {
-          id: studentId,
-          name: sp.profiles.full_name,
-          email: sp.profiles.email,
-          status: sp.subscription_status,
-          plan: assignment?.workouts?.name || null,
-          completedThisWeek,
-          trainedToday,
-          lastSession
-        }
-      })
-    )
+      return {
+        id: studentId,
+        name: sp.profiles.full_name,
+        email: sp.profiles.email,
+        status: sp.subscription_status,
+        plan: assignment?.workouts?.name || null,
+        completedThisWeek,
+        trainedToday,
+        lastSession
+      }
+    })
 
     setStudents(enriched)
     setLoading(false)
