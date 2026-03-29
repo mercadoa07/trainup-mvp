@@ -3,7 +3,56 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { Card, Button, Modal } from '../../components/ui'
-import { ChevronLeft, ChevronRight, Plus, Minus, Check, CheckCircle2, X, Star } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Minus, Check, CheckCircle2, X, Star, Timer } from 'lucide-react'
+
+function RestTimer({ seconds, onDismiss }) {
+  const [remaining, setRemaining] = useState(seconds)
+
+  useEffect(() => {
+    if (remaining <= 0) { onDismiss(); return }
+    const id = setTimeout(() => setRemaining(r => r - 1), 1000)
+    return () => clearTimeout(id)
+  }, [remaining])
+
+  // Vibrate at 0
+  useEffect(() => {
+    if (remaining === 0 && navigator.vibrate) navigator.vibrate([200, 100, 200])
+  }, [remaining])
+
+  const pct = (remaining / seconds) * 100
+  const radius = 40
+  const circ = 2 * Math.PI * radius
+  const dash = (pct / 100) * circ
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center px-4" onClick={onDismiss}>
+      <div className="bg-white rounded-3xl p-8 flex flex-col items-center gap-4 w-64" onClick={e => e.stopPropagation()}>
+        <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Descanso</p>
+        <div className="relative w-28 h-28">
+          <svg className="w-28 h-28 -rotate-90" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r={radius} fill="none" stroke="#e5e7eb" strokeWidth="8" />
+            <circle
+              cx="50" cy="50" r={radius} fill="none"
+              stroke={remaining <= 5 ? '#ef4444' : '#3b82f6'}
+              strokeWidth="8"
+              strokeDasharray={`${dash} ${circ}`}
+              strokeLinecap="round"
+              style={{ transition: 'stroke-dasharray 1s linear, stroke 0.3s' }}
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className={`text-4xl font-bold ${remaining <= 5 ? 'text-red-500' : 'text-gray-900'}`}>
+              {remaining}
+            </span>
+          </div>
+        </div>
+        <button onClick={onDismiss} className="text-sm text-blue-600 font-medium hover:underline">
+          Saltar descanso
+        </button>
+      </div>
+    </div>
+  )
+}
 
 // Stepper number input for gym use (big buttons)
 function NumberStepper({ value, onChange, min = 0, max = 999, step = 1, label, suffix = '' }) {
@@ -63,6 +112,7 @@ export default function WorkoutLog() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [restTimer, setRestTimer] = useState(null) // seconds or null
 
   const exercises = todayDay?.exercises || []
 
@@ -97,11 +147,21 @@ export default function WorkoutLog() {
   }
 
   function markSetDone(setIdx) {
+    let wasNotDone = false
     setExerciseLogs(logs => logs.map((log, i) => {
       if (i !== currentExIdx) return log
-      const newSets = log.sets.map((s, si) => si === setIdx ? { ...s, done: !s.done } : s)
+      const newSets = log.sets.map((s, si) => {
+        if (si !== setIdx) return s
+        wasNotDone = !s.done
+        return { ...s, done: !s.done }
+      })
       return { ...log, sets: newSets }
     }))
+    // Start rest timer only when marking as done (not when unmarking)
+    if (wasNotDone) {
+      const restSecs = currentEx?.rest_seconds
+      if (restSecs && restSecs > 0) setRestTimer(restSecs)
+    }
   }
 
   function addSet() {
@@ -335,6 +395,9 @@ export default function WorkoutLog() {
           </div>
         )}
       </div>
+
+      {/* Rest Timer */}
+      {restTimer && <RestTimer seconds={restTimer} onDismiss={() => setRestTimer(null)} />}
 
       {/* Finish Modal */}
       <Modal
