@@ -11,6 +11,7 @@ export default function SignUp() {
   const [searchParams] = useSearchParams()
   const inviteCode = searchParams.get('invite')
   const refCode = searchParams.get('ref')
+  const joinCode = searchParams.get('joinCode')
 
   const [form, setForm] = useState({
     fullName: '',
@@ -63,7 +64,7 @@ export default function SignUp() {
     }
 
     setSuccess(true)
-    setTimeout(() => navigate('/login'), 3000)
+    setTimeout(() => navigate(joinCode ? `/login?joinCode=${joinCode}` : '/login'), 3000)
   }
 
   if (success) {
@@ -174,7 +175,9 @@ export default function SignUp() {
 
             {inviteCode && (
               <div className="p-3 bg-blue-50 rounded-xl text-xs text-blue-600">
-                Te registras como alumno y quedas vinculado a tu entrenador automaticamente.
+                {joinCode
+                  ? 'Te registras como alumno, quedás vinculado a tu entrenador e inscripto en el plan automáticamente.'
+                  : 'Te registras como alumno y quedas vinculado a tu entrenador automaticamente.'}
               </div>
             )}
 

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { Card, Badge, Button, LoadingSpinner } from '../../components/ui'
-import { ArrowLeft, Dumbbell, ChevronDown, ChevronUp, Clock, BarChart2, Pencil } from 'lucide-react'
+import { ArrowLeft, Dumbbell, ChevronDown, ChevronUp, Clock, BarChart2, Pencil, Share2, Check } from 'lucide-react'
 
 export default function WorkoutDetail() {
   const { workoutId } = useParams()
@@ -13,6 +13,14 @@ export default function WorkoutDetail() {
   const [days, setDays] = useState([])
   const [loading, setLoading] = useState(true)
   const [expandedDay, setExpandedDay] = useState(0)
+  const [copied, setCopied] = useState(false)
+
+  function copyJoinLink() {
+    if (!workout?.join_code) return
+    navigator.clipboard.writeText(`${window.location.origin}/join?code=${workout.join_code}`)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   useEffect(() => {
     if (workoutId) loadWorkout()
@@ -60,6 +68,13 @@ export default function WorkoutDetail() {
           <h1 className="text-xl font-bold text-gray-900 truncate">{workout.name}</h1>
           {workout.goal && <p className="text-sm text-gray-500 truncate">{workout.goal}</p>}
         </div>
+        <button
+          onClick={copyJoinLink}
+          className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 flex-shrink-0"
+          title="Compartir plan"
+        >
+          {copied ? <Check className="w-4 h-4 text-green-600" /> : <Share2 className="w-4 h-4 text-gray-600" />}
+        </button>
         <button
           onClick={() => navigate(`/trainer/workouts/${workoutId}/edit`)}
           className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 flex-shrink-0"

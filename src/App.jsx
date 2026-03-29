@@ -5,6 +5,7 @@ import { Layout } from './components/Layout'
 
 import Login from './pages/Login'
 import SignUp from './pages/SignUp'
+import Join from './pages/Join'
 
 import TrainerDashboard from './pages/trainer/Dashboard'
 import Students from './pages/trainer/Students'
@@ -43,6 +44,7 @@ export default function App() {
           {/* Public */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<SignUp />} />
+          <Route path="/join" element={<Join />} />
 
           {/* Trainer routes */}
           <Route path="/trainer" element={<TrainerLayout><TrainerDashboard /></TrainerLayout>} />

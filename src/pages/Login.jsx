@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { Button, Input } from '../components/ui'
 import { Dumbbell, AlertCircle } from 'lucide-react'
@@ -8,6 +8,8 @@ export default function Login() {
   const { signIn } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
+  const joinCode = searchParams.get('joinCode')
   const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -23,9 +25,13 @@ export default function Login() {
       return
     }
     const role = data.user?.user_metadata?.role
-    const from = location.state?.from?.pathname
-    if (from && from !== '/') navigate(from, { replace: true })
-    else navigate(role === 'trainer' ? '/trainer' : '/student', { replace: true })
+    if (joinCode) {
+      navigate(`/join?code=${joinCode}`, { replace: true })
+    } else {
+      const from = location.state?.from
+      if (from?.pathname && from.pathname !== '/') navigate(from.pathname + (from.search || ''), { replace: true })
+      else navigate(role === 'trainer' ? '/trainer' : '/student', { replace: true })
+    }
   }
 
   return (
